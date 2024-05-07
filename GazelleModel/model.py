@@ -40,13 +40,13 @@ class Model:
         self.llm_output_queue:Queue = Queue()
     def __load_model(self):
         if not self.is_model_loaded:
-            self.llm_config = GazelleConfig.from_pretrained(self.model_id)
-            self.llm_tokenizer = transformers.AutoTokenizer.from_pretrained(self.model_id)
+            self.llm_config = GazelleConfig.from_pretrained(self.llm_model_id)
+            self.llm_tokenizer = transformers.AutoTokenizer.from_pretrained(self.llm_model_id)
             self.audio_processor = transformers.Wav2Vec2Processor.from_pretrained(
-                "facebook/wav2vec2-base-960h"
+                self.audio_process_model_id
             )
             self.llm_model = GazelleForConditionalGeneration.from_pretrained(
-                self.model_id,
+                self.llm_model_id,
                 device_map=self.device,
                 quantization_config=self.quantization_config_8bit,
             )
