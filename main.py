@@ -1,25 +1,30 @@
 
 from fastapi import FastAPI, WebSocket, APIRouter
 import uvicorn
-import json
+from contextlib import asynccontextmanager
 from GazelleModel import Client, LLMHandler
 from typing import List
 
 
-app = FastAPI()
 llm_handler:LLMHandler = None
 clients:List[Client] = list()
 
-
-@app.on_event("startup")
-def startup():
-    global llm_handler
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load the ML model
     llm_handler = LLMHandler()
     llm_handler.start()
-@app.on_event("shutdown")
-def shutdown():
-    global llm_handler
+    yield
+    # Clean up the ML models and release the resources
     llm_handler.stop()
+
+
+
+
+
+app = FastAPI(lifespan=lifespan)
+
+
 
 @app.websocket("/connection")
 async def WebScoketConnectionHandler(websocket:WebSocket):
