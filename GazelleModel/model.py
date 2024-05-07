@@ -103,7 +103,7 @@ class LLMHandler:
         self.request_handler[request_id] = Queue()
 
     def unregister_client(self,request_id:str):
-        del self.request_handler.pop(request_id)
+        self.request_handler.pop(request_id)
     
     def start(self):
         self.__startModels()
