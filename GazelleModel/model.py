@@ -91,12 +91,13 @@ class Model:
         while self.start_llm:
             try:
                 logger.info(f"[{self.model_id}] loop is started")
-                __payload:dict = self.audio_input_queue.get()
-                logger.info(f"[{self.model_id}] llm model get request {__payload}")
-                __request_id:str = __payload.pop("request_id")
-                __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
-                logger.info(f"[{self.model_id}] llm model output {__llm_output}")
-                self.llm_output_queue.put_nowait({"text":__llm_output,"request_id":__request_id})
+                if self.audio_input_queue.empty():
+                    __payload:dict = self.audio_input_queue.get_nowait()
+                    logger.info(f"[{self.model_id}] llm model get request {__payload}")
+                    __request_id:str = __payload.pop("request_id")
+                    __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
+                    logger.info(f"[{self.model_id}] llm model output {__llm_output}")
+                    self.llm_output_queue.put_nowait({"text":__llm_output,"request_id":__request_id})
             except Exception as e:
                 pass
     def start(self): 
@@ -168,7 +169,7 @@ class LLMHandler:
         while self.__started:
             for model in self.self.__models:
                 if not model.llm_output_queue.empty():
-                    payload = model.llm_output_queue.get()
+                    payload = model.llm_output_queue.get_nowait()
                     logger.info(f"client id {payload['request_id']} get llm output {payload['text']}")
                     self.request_handler[payload['request_id']].put(payload['text'])
     
