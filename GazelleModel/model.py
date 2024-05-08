@@ -8,7 +8,7 @@ from gazelle import (
 from typing import Dict, List
 from queue import Queue
 import asyncio
-from log import configure_logger
+from .log import configure_logger
 from logging import Logger
 
 logger:Logger = configure_logger(__name__)
