@@ -89,7 +89,8 @@ class Model:
         logger.info(f"[{self.model_id}] llm model started acceptig the data")
         while self.start_llm:
             try:
-                __payload:dict = self.audio_input_queue.get()
+                logger.info(f"[{self.model_id}] loop is started")
+                __payload:dict = await self.audio_input_queue.get()
                 logger.info(f"[{self.model_id}] llm model get request {__payload}")
                 __request_id:str = __payload.pop("request_id")
                 __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
