@@ -1,7 +1,7 @@
 import torch
 import transformers
 from transformers import BitsAndBytesConfig
-from gazelle import (
+from .gazelle import (
     GazelleConfig,
     GazelleForConditionalGeneration,
 )
@@ -17,7 +17,9 @@ import time
 logger:Logger = configure_logger(__name__)
 
 class Model:
-    def __init__(self,model_id:str):
+    def __init__(self,model_id:str,debug:bool=True):
+        # mode
+        self.debug = debug
         # models class id
         self.model_id = model_id
         
@@ -32,9 +34,12 @@ class Model:
         self.llm_tokenizer = None
         self.llm_config = None
         self.audio_processor = None
-        self.quantization_config_8bit = BitsAndBytesConfig(
-            load_in_8bit=True,
-        )
+        # if not self.debug:
+        #     self.quantization_config_8bit = BitsAndBytesConfig(
+        #         load_in_8bit=True,
+        #     )
+        # else:
+        #     self.quantization_config_8bit = None
 
         # basic conf
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -66,12 +71,14 @@ class Model:
                 self.audio_process_model_id
             )
             logger.info(f"\t[{self.model_id}] loaded model audio process")
-            self.llm_model = GazelleForConditionalGeneration.from_pretrained(
-                self.llm_model_id,
-                device_map=self.device,
-                quantization_config=self.quantization_config_8bit,
-            )
-            logger.info(f"\t[{self.model_id}] loaded LLM model")
+            
+            # if self.debug:
+            #     self.llm_model = GazelleForConditionalGeneration.from_pretrained(
+            #         self.llm_model_id,
+            #         device_map=self.device,
+            #         quantization_config=self.quantization_config_8bit,
+            #     )
+            #     logger.info(f"\t[{self.model_id}] loaded LLM model")
     def putAudio(self,audio:bytes, prompt:str, request_id:str):
         logger.info(f"[{self.model_id}] got an audio with request id {request_id} and prompt {prompt}")
         __audio_values = self.audio_processor(audio=audio, return_tensors="pt", sampling_rate=self.samplerate).input_values
@@ -91,12 +98,15 @@ class Model:
         logger.info(f"[{self.model_id}] llm model started acceptig the data")
         while self.start_llm:
             try:
-                if self.audio_input_queue.empty():
+                if not self.audio_input_queue.empty():
                     logger.info(f"[{self.model_id}] got something")
                     __payload:dict = self.audio_input_queue.get_nowait()
                     logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     __request_id:str = __payload.pop("request_id")
-                    __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
+                    if not self.debug:
+                        __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
+                    else:
+                        __llm_output = "hello"
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
                     self.llm_output_queue.put_nowait({"text":__llm_output,"request_id":__request_id})
                 else:
@@ -166,11 +176,11 @@ class LLMHandler:
             return True
         return False
     
-    async def __start(self):
+    def __start(self):
         logger.info(f"LLM handler process statred")
         self.__started = True
         while self.__started:
-            for model in self.self.__models:
+            for model in self.__models:
                 if not model.llm_output_queue.empty():
                     payload = model.llm_output_queue.get_nowait()
                     logger.info(f"client id {payload['request_id']} get llm output {payload['text']}")

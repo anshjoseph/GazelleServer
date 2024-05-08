@@ -12,12 +12,13 @@ clients:List[Client] = list()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global llm_handler
     # Load the ML model
     llm_handler = LLMHandler()
     logger.info("llm handler object is created")
     llm_handler.start()
     logger.info("llm handler process started")
-    yield app
+    yield 
     # Clean up the ML models and release the resources
     llm_handler.stop()
     logger.info("llm handler process stoped")
@@ -39,8 +40,5 @@ async def WebScoketConnectionHandler(websocket:WebSocket):
 
 
 
-# if __name__ == "__main__":
-#     uvicorn.run("main:app",host='0.0.0.0',port=8000,reload=True)
-from colabcode import ColabCode
-server = ColabCode(port=10000, code=False)
-server.run_app(app=app)
+if __name__ == "__main__":
+    uvicorn.run("main:app",host='0.0.0.0',port=8000,reload=True)
