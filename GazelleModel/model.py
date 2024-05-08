@@ -10,6 +10,7 @@ from queue import Queue
 import asyncio
 from .log import configure_logger
 from logging import Logger
+from uuid import uuid4
 
 logger:Logger = configure_logger(__name__)
 
@@ -113,7 +114,7 @@ class LLMHandler:
         self.__models_count = 1
         self.__request_count = 0
         logger.info(f"number of model's in memroy {self.__models_count}")
-        self.__models:List[Model] = [Model() for _ in range(self.__models_count)]
+        self.__models:List[Model] = [Model(str(uuid4())) for _ in range(self.__models_count)]
         logger.info("model list init")
         self.__LLMHandleTask = None
         self.__started:bool  = False
