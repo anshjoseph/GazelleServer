@@ -12,6 +12,7 @@ import asyncio
 from .log import configure_logger
 from logging import Logger
 from uuid import uuid4
+import time
 
 logger:Logger = configure_logger(__name__)
 
@@ -98,6 +99,8 @@ class Model:
                     __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
                     self.llm_output_queue.put_nowait({"text":__llm_output,"request_id":__request_id})
+                else:
+                    time.sleep(0.5)
             except Exception as e:
                 pass
     def start(self): 
@@ -172,6 +175,8 @@ class LLMHandler:
                     payload = model.llm_output_queue.get_nowait()
                     logger.info(f"client id {payload['request_id']} get llm output {payload['text']}")
                     self.request_handler[payload['request_id']].put(payload['text'])
+                else:
+                    time.sleep(0.5)
     
     def getLLMOutput(self,request_id:str):
         if len(self.request_handler[request_id]) > 0:
