@@ -91,8 +91,8 @@ class Model:
         logger.info(f"[{self.model_id}] llm model started acceptig the data")
         while self.start_llm:
             try:
-                logger.info(f"[{self.model_id}] loop is started")
                 if self.audio_input_queue.empty():
+                    logger.info(f"[{self.model_id}] got something")
                     __payload:dict = self.audio_input_queue.get_nowait()
                     logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     __request_id:str = __payload.pop("request_id")
