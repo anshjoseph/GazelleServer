@@ -5,6 +5,7 @@ from gazelle import (
     GazelleConfig,
     GazelleForConditionalGeneration,
 )
+from threading import Thread
 from typing import Dict, List
 from queue import Queue
 import asyncio
@@ -41,7 +42,7 @@ class Model:
         logger.info(f"[{self.model_id}] model is loaded with memory footprint of :-")
         logger.info(f"[{self.model_id}] GPU memory allocated: %fGB"%(torch.cuda.max_memory_reserved(0)/1024/1024/1024))
 
-
+        # Model dtyepe config
         self.audio_dtype = torch.float16
         self.samplerate:int = 16000
         self.start_llm:bool = False
@@ -84,13 +85,13 @@ class Model:
         self.audio_input_queue.put_nowait(__payload)
 
 
-    async def __startLLM(self):
+    def __startLLM(self):
         self.start_llm = True
         logger.info(f"[{self.model_id}] llm model started acceptig the data")
         while self.start_llm:
             try:
                 logger.info(f"[{self.model_id}] loop is started")
-                __payload:dict = await self.audio_input_queue.get()
+                __payload:dict = self.audio_input_queue.get()
                 logger.info(f"[{self.model_id}] llm model get request {__payload}")
                 __request_id:str = __payload.pop("request_id")
                 __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
@@ -99,12 +100,13 @@ class Model:
             except Exception as e:
                 pass
     def start(self): 
-        self.llm_task = asyncio.create_task(self.__startLLM())
+        self.llm_task = Thread(target=self.__startLLM)
+        self.llm_task.start()
         logger.info(f"[{self.model_id}] llm task started")
         
     def stop(self):
         self.start_llm = False
-        self.llm_task.cancel()
+        # self.llm_task.cancel()
         logger.info(f"[{self.model_id}] llm task stoped")
     
 
@@ -139,14 +141,15 @@ class LLMHandler:
     def start(self):
         self.__startModels()
         logger.info(f"LLM models where started")
-        self.__LLMHandleTask = asyncio.create_task(self.__start())
+        self.__LLMHandleTask = Thread(target=self.__start)
+        self.__LLMHandleTask.start()
         logger.info(f"LLM Handler where started")
 
     def stop(self):
         self.__stopModels()
         logger.info(f"LLM models where stoped")
         self.__started = False
-        self.__LLMHandleTask.cancel()
+        # self.__LLMHandleTask.cancel()
         logger.info(f"LLM Handler where stoped")
 
     def putLLMRequest(self,audio:bytes,prompt:str,request_id:str):

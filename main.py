@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     logger.info("llm handler object is created")
     llm_handler.start()
     logger.info("llm handler process started")
-    yield
+    yield app
     # Clean up the ML models and release the resources
     llm_handler.stop()
     logger.info("llm handler process stoped")

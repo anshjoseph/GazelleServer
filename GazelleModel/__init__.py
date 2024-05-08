@@ -2,7 +2,7 @@ from .model import LLMHandler
 from fastapi import WebSocket
 from .log import configure_logger
 from uuid import uuid4
-import asyncio
+from threading import Thread
 
 
 
@@ -18,8 +18,10 @@ class Client:
 
         self.recevier_task = None
         self.sender_task = None
+
+        self.stop = False
     async def recevier(self):
-        while True:
+        while not self.stop:
             revc:bytes = await self.ws.receive_bytes()
 
             if revc == b"END":
@@ -31,16 +33,19 @@ class Client:
             else:
                 self.llm_handler.putLLMRequest(revc,"assist me",self.client_id)
     async def sender(self):
-        while True:
+        while not self.stop:
             out = self.llm_handler.getLLMOutput(self.client_id)
             if out:
                 await self.ws.send(out)
     def start(self):
-        self.recevier_task = asyncio.create_task(self.recevier())
-        self.sender_task = asyncio.create_task(self.sender())
+        self.recevier_task = Thread(target=self.recevier)
+        self.sender_task = Thread(target=self.sender)
+        self.recevier_task.start()
+        self.sender_task.start()
         logger.info(f"[{self.client_id}] client sender and receiver task started")
     
     def stop(self):
-        self.recevier_task.cancel()
-        self.sender_task.cancel()
+        # self.recevier_task.cancel()
+        # self.sender_task.cancel()
+        self.stop = True
         logger.info(f"[{self.client_id}] client sender and receiver task stoped")
