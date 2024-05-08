@@ -43,4 +43,4 @@ class Client:
     def stop(self):
         self.recevier_task.cancel()
         self.sender_task.cancel()
-        ogger.info(f"[{self.client_id}] client sender and receiver task stoped")
+        logger.info(f"[{self.client_id}] client sender and receiver task stoped")
