@@ -1,20 +1,26 @@
 
 from fastapi import FastAPI, WebSocket, APIRouter
-import uvicorn
+from fastapi.websockets import WebSocketDisconnect
 from contextlib import asynccontextmanager
-from GazelleModel import Client, LLMHandler, log
+from GazelleModel import LLMHandler, log, Client
 from typing import List
+from uuid import uuid4
+import asyncio
+from uvicorn import Config, Server
 
 logger = log.configure_logger(__name__)
-
+loop = asyncio.new_event_loop()
+connection_manager = None
 llm_handler:LLMHandler = None
-clients:List[Client] = list()
+# clients:List[Client] = list()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global llm_handler
+    global connection_manager
     # Load the ML model
     llm_handler = LLMHandler()
+    # connection_manager = ConnectionManager(llm_handler)
     logger.info("llm handler object is created")
     llm_handler.start()
     logger.info("llm handler process started")
@@ -31,14 +37,19 @@ app = FastAPI(lifespan=lifespan)
 
 
 
+
+ls = []
 @app.websocket("/connection")
 async def WebScoketConnectionHandler(websocket:WebSocket):
     await websocket.accept()
-    client = Client(websocket,llm_handler)
-    logger.info(f"new client with id {client.client_id} is joined")
-    clients.append(client)
+    client = Client(websocket,llm_handler,str(uuid4()))
+    ls.append(client)
+    await client.start()
+
 
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app",host='0.0.0.0',port=8000,reload=True)
+    config = Config(app=app, loop=loop, reload=True, host="0.0.0.0", port=4000)
+    server = Server(config)
+    loop.run_until_complete(server.serve())

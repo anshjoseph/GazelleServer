@@ -5,14 +5,14 @@ from .gazelle import (
     GazelleConfig,
     GazelleForConditionalGeneration,
 )
-from threading import Thread
 from typing import Dict, List
-from queue import Queue
+from asyncio import Queue
 import asyncio
 from .log import configure_logger
 from logging import Logger
 from uuid import uuid4
 import time
+import numpy as np
 
 logger:Logger = configure_logger(__name__)
 
@@ -59,7 +59,6 @@ class Model:
         #  QUEUE
         self.audio_input_queue:Queue = Queue()
         self.llm_output_queue:Queue = Queue()
-        logger.info("[{self.model_id}] INIT is completed")
 
     def __load_model(self):
         if not self.is_model_loaded:
@@ -79,49 +78,62 @@ class Model:
             #         quantization_config=self.quantization_config_8bit,
             #     )
             #     logger.info(f"\t[{self.model_id}] loaded LLM model")
-    def putAudio(self,audio:bytes, prompt:str, request_id:str):
+    def bytes_to_float_array(self,audio_bytes):
+        raw_data = np.frombuffer(buffer=audio_bytes, dtype=np.int16)
+        return raw_data.astype(np.float32) / 32768.0
+    async def putAudio(self, audio:bytes, prompt:str, request_id:str):
         logger.info(f"[{self.model_id}] got an audio with request id {request_id} and prompt {prompt}")
+        
+        audio = self.bytes_to_float_array(audio)
         __audio_values = self.audio_processor(audio=audio, return_tensors="pt", sampling_rate=self.samplerate).input_values
+    
         __msgs = [
             {"role": "user", "content": prompt},
         ]
-        __labels = self.tokenizer.apply_chat_template(
-            __msgs, return_tensors="pt", add_generation_prompt=True
-        )
+        try:
+            __labels = self.llm_tokenizer.apply_chat_template(
+                __msgs, return_tensors="pt", add_generation_prompt=True
+            )
+        except Exception as e:
+            print(e)
         __payload = {"audio_values": __audio_values.squeeze(0).to(self.device).to(self.audio_dtype), "input_ids": __labels.to(self.device), "request_id": request_id} 
         logger.info(f"[{self.model_id}] llm payload is ready {__payload}")
-        self.audio_input_queue.put_nowait(__payload)
+        await self.audio_input_queue.put(__payload)
 
 
-    def __startLLM(self):
+    async def __startLLM(self):
         self.start_llm = True
         logger.info(f"[{self.model_id}] llm model started acceptig the data")
         while self.start_llm:
             try:
                 if not self.audio_input_queue.empty():
                     logger.info(f"[{self.model_id}] got something")
-                    __payload:dict = self.audio_input_queue.get_nowait()
+                    __payload:dict = await self.audio_input_queue.get()
                     logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     __request_id:str = __payload.pop("request_id")
                     if not self.debug:
                         __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
                     else:
-                        __llm_output = "hello"
+                        __llm_output:str = "hello"
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
                     self.llm_output_queue.put_nowait({"text":__llm_output,"request_id":__request_id})
                 else:
-                    time.sleep(0.5)
+                    await asyncio.sleep(0.5)
             except Exception as e:
                 pass
     def start(self): 
-        self.llm_task = Thread(target=self.__startLLM)
-        self.llm_task.start()
+        self.llm_task = asyncio.create_task(self.__startLLM())
+        asyncio.ensure_future(self.llm_task)
         logger.info(f"[{self.model_id}] llm task started")
         
     def stop(self):
         self.start_llm = False
-        # self.llm_task.cancel()
+        self.llm_task.cancel()
         logger.info(f"[{self.model_id}] llm task stoped")
+        torch.cuda.empty_cache()
+    
+    def ReturnTask(self):
+        return self.llm_task
     
 
 
@@ -155,42 +167,48 @@ class LLMHandler:
     def start(self):
         self.__startModels()
         logger.info(f"LLM models where started")
-        self.__LLMHandleTask = Thread(target=self.__start)
-        self.__LLMHandleTask.start()
+        self.__LLMHandleTask = asyncio.create_task(self.__start())
+        asyncio.ensure_future(self.__LLMHandleTask)
         logger.info(f"LLM Handler where started")
 
     def stop(self):
         self.__stopModels()
         logger.info(f"LLM models where stoped")
         self.__started = False
-        # self.__LLMHandleTask.cancel()
+        self.__LLMHandleTask.cancel()
         logger.info(f"LLM Handler where stoped")
 
-    def putLLMRequest(self,audio:bytes,prompt:str,request_id:str):
+    async def putLLMRequest(self, audio:bytes, prompt:str, request_id:str):
         if request_id in self.request_handler:
             self.__request_count += 1
-            
             model_no = self.__request_count % self.__models_count
             logger.info(f"client {request_id} with prompt {prompt} requested model id {self.__models[model_no].model_id} for audio chunck processing")
-            self.__models[model_no].putAudio(audio,prompt,request_id)
+            try:
+                await self.__models[model_no].putAudio(audio,prompt,request_id)
+            except Exception as e:
+                Logger.info(f"{e}")
             return True
         return False
     
-    def __start(self):
+    async def __start(self):
         logger.info(f"LLM handler process statred")
         self.__started = True
         while self.__started:
+            await asyncio.sleep(0.5)
             for model in self.__models:
                 if not model.llm_output_queue.empty():
-                    payload = model.llm_output_queue.get_nowait()
+                    payload = await model.llm_output_queue.get()
                     logger.info(f"client id {payload['request_id']} get llm output {payload['text']}")
-                    self.request_handler[payload['request_id']].put(payload['text'])
-                else:
-                    time.sleep(0.5)
+                    await self.request_handler[payload['request_id']].put(payload['text'])
+                    logger.info(f"request id put in queue {payload['text']}")
+                    
     
-    def getLLMOutput(self,request_id:str):
-        if len(self.request_handler[request_id]) > 0:
-            return self.request_handler[request_id].pop(0)
+    async def getLLMOutput(self,request_id:str):
+        logger.info(f"output request for this client {request_id}")
+        if not self.request_handler[request_id].empty():
+            text = await self.request_handler[request_id].get()
+            logger.info(f"llm out from queue")
+            return text
         return False
     
 
