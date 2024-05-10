@@ -112,7 +112,7 @@ class Model:
                     logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     __request_id:str = __payload.pop("request_id")
                     if not self.debug:
-                        __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(__payload, max_new_tokens=64)[0])
+                        __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(**__payload, max_new_tokens=64)[0])
                     else:
                         __llm_output:str = "hello"
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
