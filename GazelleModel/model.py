@@ -17,7 +17,7 @@ import numpy as np
 logger:Logger = configure_logger(__name__)
 
 class Model:
-    def __init__(self,model_id:str,debug:bool=True):
+    def __init__(self,model_id:str,debug:bool=False):
         # mode
         self.debug = debug
         # models class id
@@ -71,13 +71,13 @@ class Model:
             )
             logger.info(f"\t[{self.model_id}] loaded model audio process")
             
-            # if self.debug:
-            #     self.llm_model = GazelleForConditionalGeneration.from_pretrained(
-            #         self.llm_model_id,
-            #         device_map=self.device,
-            #         quantization_config=self.quantization_config_8bit,
-            #     )
-            #     logger.info(f"\t[{self.model_id}] loaded LLM model")
+            if self.debug:
+                self.llm_model = GazelleForConditionalGeneration.from_pretrained(
+                    self.llm_model_id,
+                    device_map=self.device,
+                    quantization_config=self.quantization_config_8bit,
+                )
+                logger.info(f"\t[{self.model_id}] loaded LLM model")
     def bytes_to_float_array(self,audio_bytes):
         raw_data = np.frombuffer(buffer=audio_bytes, dtype=np.int16)
         return raw_data.astype(np.float32) / 32768.0
@@ -130,7 +130,7 @@ class Model:
         self.start_llm = False
         self.llm_task.cancel()
         logger.info(f"[{self.model_id}] llm task stoped")
-        torch.cuda.empty_cache()
+        
     
     def ReturnTask(self):
         return self.llm_task
@@ -155,6 +155,7 @@ class LLMHandler:
     def __stopModels(self):
         for model in self.__models:
             model.stop()
+        torch.cuda.empty_cache()
 
     def register_client(self,request_id:str):
         logger.info(f"client with id {request_id} is registered")
