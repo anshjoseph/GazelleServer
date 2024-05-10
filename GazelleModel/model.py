@@ -17,9 +17,8 @@ import numpy as np
 logger:Logger = configure_logger(__name__)
 
 class Model:
-    def __init__(self,model_id:str,debug:bool=False):
-        # mode
-        self.debug = debug
+    def __init__(self,model_id:str):
+
         # models class id
         self.model_id = model_id
         
@@ -34,12 +33,9 @@ class Model:
         self.llm_tokenizer = None
         self.llm_config = None
         self.audio_processor = None
-        # if not self.debug:
-        #     self.quantization_config_8bit = BitsAndBytesConfig(
-        #         load_in_8bit=True,
-        #     )
-        # else:
-        #     self.quantization_config_8bit = None
+        self.quantization_config_8bit = BitsAndBytesConfig(
+                load_in_8bit=True,
+            )
 
         # basic conf
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -71,13 +67,13 @@ class Model:
             )
             logger.info(f"\t[{self.model_id}] loaded model audio process")
             
-            if self.debug:
-                self.llm_model = GazelleForConditionalGeneration.from_pretrained(
-                    self.llm_model_id,
-                    device_map=self.device,
-                    quantization_config=self.quantization_config_8bit,
-                )
-                logger.info(f"\t[{self.model_id}] loaded LLM model")
+            
+            self.llm_model = GazelleForConditionalGeneration.from_pretrained(
+                self.llm_model_id,
+                device_map=self.device,
+                quantization_config=self.quantization_config_8bit,
+            )
+            logger.info(f"\t[{self.model_id}] loaded LLM model")
     def bytes_to_float_array(self,audio_bytes):
         raw_data = np.frombuffer(buffer=audio_bytes, dtype=np.int16)
         return raw_data.astype(np.float32) / 32768.0
@@ -111,10 +107,9 @@ class Model:
                     __payload:dict = await self.audio_input_queue.get()
                     logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     __request_id:str = __payload.pop("request_id")
-                    if not self.debug:
-                        __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(**__payload, max_new_tokens=64)[0])
-                    else:
-                        __llm_output:str = "hello"
+                    
+                    __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(**__payload, max_new_tokens=128)[0])
+
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
                     self.llm_output_queue.put_nowait({"text":__llm_output,"request_id":__request_id})
                 else:
