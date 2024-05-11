@@ -10,7 +10,11 @@ from GazelleModel.log import configure_logger
 import json
 import torch
 import torchaudio
+import librosa
 
+
+
+sound,sr =librosa.load("./samples/test16.wav",sr=16000)
 
 logger = configure_logger(__name__)
 
@@ -23,7 +27,7 @@ def bytes_to_float_array(audio_bytes):
 connection = websocket.create_connection(ws_url)
 
 
-chunk = 8192
+chunk = 12000
 format = pyaudio.paInt16
 channels = 1
 rate = 16000
@@ -44,8 +48,8 @@ async def recordAudio():
             for _ in range(0, int(rate / chunk * record_seconds)):
                 await asyncio.sleep(0.5)
                 data = stream.read(chunk, exception_on_overflow=False)
-                audio_array = np.array(bytes_to_float_array(data),dtype=np.float32)
-                connection.send_bytes(audio_array.tobytes())
+                # audio_array = np.array(bytes_to_float_array(data),dtype=np.float32)
+                connection.send_bytes(sound.tobytes())
                 
         except Exception as e:
             print(e)

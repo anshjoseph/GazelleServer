@@ -14,6 +14,7 @@ from uuid import uuid4
 import time
 import numpy as np
 import torchaudio
+import io
 import requests
 
 logger:Logger = configure_logger(__name__)
@@ -86,7 +87,10 @@ class Model:
     async def putAudio(self, audio:bytes, prompt:str, request_id:str):
         logger.info(f"[{self.model_id}] got an audio with request id {request_id} and prompt {prompt}")
         
-        audio = self.bytes_to_float_array(audio)
+        audio = io.BytesIO(audio)
+        audio, sr = torchaudio.load(audio)
+        if sr != 16000:
+            audio = torchaudio.transforms.Resample(sr, 16000)(audio)
         __audio_values = self.audio_processor(
             audio=audio, 
             return_tensors="pt", 
@@ -110,6 +114,7 @@ class Model:
         await self.audio_input_queue.put(__payload)
 
     def inference_collator(self,audio_input, prompt="Transcribe the following \n<|audio|>", audio_dtype=torch.float16):
+        
         audio_values = self.audio_processor(
             audio=audio_input, return_tensors="pt", sampling_rate=16000
         ).input_values
@@ -135,11 +140,12 @@ class Model:
                     __request_id:str = __payload.pop("request_id")
                     logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     try:
-                        __llm_raw_token = self.llm_model.generate(audio_values=__payload['audio_values'],input_ids = __payload['input_ids'], max_new_tokens=64)
+                        __llm_raw_token = self.llm_model.generate(**__payload, max_new_tokens=64)
                         logger.info(f"RAW llm tokens {__llm_raw_token}")
-                        # __llm_output:str = self.llm_tokenizer.decode(__llm_raw_token[0])
-                        __llm_output = "error not happend"
+                        __llm_output:str = self.llm_tokenizer.decode(__llm_raw_token[0])
+                        # __llm_output = "error not happend"
                     except Exception as e:
+                        logger.error(f"{self.model_id} LLM not working")
                         remote_file_url = "https://r2proxy.tincans.ai/test6.wav"
                         local_file_path = "test6.wav"
                         response = requests.get(remote_file_url)
