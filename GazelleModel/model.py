@@ -92,7 +92,11 @@ class Model:
             )
         except Exception as e:
             print(e)
-        __payload = {"audio_values": __audio_values.squeeze(0).to(self.device).to(self.audio_dtype), "input_ids": __labels.to(self.device), "request_id": request_id} 
+        __payload = {
+                "audio_values": __audio_values.squeeze(0).to(self.device).to(self.audio_dtype), 
+                "input_ids": __labels.to(self.device), 
+                "request_id": request_id
+            } 
         logger.info(f"[{self.model_id}] llm payload is ready {__payload}")
         await self.audio_input_queue.put(__payload)
 
@@ -105,15 +109,16 @@ class Model:
                 if not self.audio_input_queue.empty():
                     logger.info(f"[{self.model_id}] got something")
                     __payload:dict = await self.audio_input_queue.get()
-                    logger.info(f"[{self.model_id}] llm model get request {__payload}")
+                    
                     __request_id:str = __payload.pop("request_id")
+                    logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     try:
                         __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(**__payload, max_new_tokens=128)[0])
                     except Exception as e:
-                        logger.error(f"{e}")
+                        logger.error(f"{e} so pu the basic value")
                         __llm_output = "Hello"
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
-                    self.llm_output_queue.put_nowait({"text":__llm_output,"request_id":__request_id})
+                    await self.llm_output_queue.put({"text":__llm_output,"request_id":__request_id})
                 else:
                     await asyncio.sleep(0.5)
             except Exception as e:

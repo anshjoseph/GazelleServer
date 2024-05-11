@@ -1,5 +1,5 @@
 from .model import LLMHandler
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 from .log import configure_logger
 import asyncio
 
@@ -23,8 +23,10 @@ class Client:
                 
                 llm_output = await self.llm_handler.getLLMOutput(self.client_id)
                 if llm_output:
-                    await self.websocket.send_text(llm_output)
-                
+                    try:
+                        await self.websocket.send_text(llm_output)
+                    except WebSocketDisconnect:
+                        break
             except Exception as e:
                 break
     async def recever(self):
