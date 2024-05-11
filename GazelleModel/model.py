@@ -76,7 +76,7 @@ class Model:
             self.llm_model = GazelleForConditionalGeneration.from_pretrained(
                 self.llm_model_id,
                 device_map=self.device,
-                quantization_config=self.quantization_config_8bit,
+                torch_dtype=torch.bfloat16
             )
             logger.info(f"\t[{self.model_id}] loaded LLM model")
     
