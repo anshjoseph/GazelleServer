@@ -13,6 +13,8 @@ from logging import Logger
 from uuid import uuid4
 import time
 import numpy as np
+import torchaudio
+import requests
 
 logger:Logger = configure_logger(__name__)
 
@@ -60,8 +62,10 @@ class Model:
         if not self.is_model_loaded:
             self.llm_config = GazelleConfig.from_pretrained(self.llm_model_id)
             logger.info(f"\t[{self.model_id}] loaded model config")
+
             self.llm_tokenizer = transformers.AutoTokenizer.from_pretrained(self.llm_model_id)
             logger.info(f"\t[{self.model_id}] loaded model tokenizer")
+
             self.audio_processor = transformers.Wav2Vec2Processor.from_pretrained(
                 self.audio_process_model_id
             )
@@ -74,6 +78,7 @@ class Model:
                 quantization_config=self.quantization_config_8bit,
             )
             logger.info(f"\t[{self.model_id}] loaded LLM model")
+    
     def bytes_to_float_array(self,audio_bytes):
         raw_data = np.frombuffer(buffer=audio_bytes, dtype=np.int16)
         return raw_data.astype(np.float32) / 32768.0
@@ -104,7 +109,20 @@ class Model:
         logger.info(f"[{self.model_id}] llm payload is ready {__payload}")
         await self.audio_input_queue.put(__payload)
 
-
+    def inference_collator(self,audio_input, prompt="Transcribe the following \n<|audio|>", audio_dtype=torch.float16):
+        audio_values = self.audio_processor(
+            audio=audio_input, return_tensors="pt", sampling_rate=16000
+        ).input_values
+        msgs = [
+            {"role": "user", "content": prompt},
+        ]
+        labels = self.llm_tokenizer.apply_chat_template(
+            msgs, return_tensors="pt", add_generation_prompt=True
+        )
+        return {
+            "audio_values": audio_values.squeeze(0).to("cuda").to(audio_dtype),
+            "input_ids": labels.to("cuda"),
+        }
     async def __startLLM(self):
         self.start_llm = True
         logger.info(f"[{self.model_id}] llm model started acceptig the data")
@@ -122,8 +140,16 @@ class Model:
                         # __llm_output:str = self.llm_tokenizer.decode(__llm_raw_token[0])
                         __llm_output = "error not happend"
                     except Exception as e:
-                        logger.error(f"{e} | so put the basic value")
-                        __llm_output = "Hello"
+                        remote_file_url = "https://r2proxy.tincans.ai/test6.wav"
+                        local_file_path = "test6.wav"
+                        response = requests.get(remote_file_url)
+                        with open(local_file_path, "wb") as file:
+                            file.write(response.content)
+                        test_audio, sr = torchaudio.load(local_file_path)
+                        if sr != 16000:
+                            test_audio = torchaudio.transforms.Resample(sr, 16000)(test_audio)
+                        inputs = inference_collator(test_audio, "<|audio|>")
+                        self.llm_tokenizer.decode(self.llm_model.generate(**inputs, max_new_tokens=64)[0])
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
                     await self.llm_output_queue.put({"text":__llm_output,"request_id":__request_id})
                 else:
