@@ -90,6 +90,7 @@ class Model:
         
         try:
             audio = np.frombuffer(audio, dtype='int16')
+            audio = torch.from_numpy(audio)
             # audio, sr = torchaudio.load(audio)
             # if sr != 16000:
             #     audio = torchaudio.transforms.Resample(sr, 16000)(audio)
