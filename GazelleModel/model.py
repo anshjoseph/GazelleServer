@@ -148,8 +148,8 @@ class Model:
                         test_audio, sr = torchaudio.load(local_file_path)
                         if sr != 16000:
                             test_audio = torchaudio.transforms.Resample(sr, 16000)(test_audio)
-                        inputs = inference_collator(test_audio, "<|audio|>")
-                        self.llm_tokenizer.decode(self.llm_model.generate(**inputs, max_new_tokens=64)[0])
+                        inputs = self.inference_collator(test_audio, "<|audio|>")
+                        __llm_output = self.llm_tokenizer.decode(self.llm_model.generate(**inputs, max_new_tokens=64)[0])
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
                     await self.llm_output_queue.put({"text":__llm_output,"request_id":__request_id})
                 else:
