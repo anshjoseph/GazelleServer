@@ -107,9 +107,11 @@ class Model:
                     __payload:dict = await self.audio_input_queue.get()
                     logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     __request_id:str = __payload.pop("request_id")
-                    
-                    __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(**__payload, max_new_tokens=128)[0])
-
+                    try:
+                        __llm_output:str = self.llm_tokenizer.decode(self.llm_model.generate(**__payload, max_new_tokens=128)[0])
+                    except Exception as e:
+                        logger.error(f"{e}")
+                        __llm_output = "Hello"
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
                     self.llm_output_queue.put_nowait({"text":__llm_output,"request_id":__request_id})
                 else:
