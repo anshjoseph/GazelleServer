@@ -77,11 +77,15 @@ class Model:
     def bytes_to_float_array(self,audio_bytes):
         raw_data = np.frombuffer(buffer=audio_bytes, dtype=np.int16)
         return raw_data.astype(np.float32) / 32768.0
+    
     async def putAudio(self, audio:bytes, prompt:str, request_id:str):
         logger.info(f"[{self.model_id}] got an audio with request id {request_id} and prompt {prompt}")
         
         audio = self.bytes_to_float_array(audio)
-        __audio_values = self.audio_processor(audio=audio, return_tensors="pt", sampling_rate=self.samplerate).input_values
+        __audio_values = self.audio_processor(
+            audio=audio, 
+            return_tensors="pt", 
+            sampling_rate=self.samplerate).input_values
     
         __msgs = [
             {"role": "user", "content": prompt},
@@ -91,7 +95,7 @@ class Model:
                 __msgs, return_tensors="pt", add_generation_prompt=True
             )
         except Exception as e:
-            print(e)
+            logger.error(f"error in labelmaker {e}")
         __payload = {
                 "audio_values": __audio_values.squeeze(0).to(self.device).to(self.audio_dtype), 
                 "input_ids": __labels.to(self.device), 
@@ -113,11 +117,11 @@ class Model:
                     __request_id:str = __payload.pop("request_id")
                     logger.info(f"[{self.model_id}] llm model get request {__payload}")
                     try:
-                        __llm_raw_token = self.llm_model.generate(**__payload, max_new_tokens=64)
+                        __llm_raw_token = self.llm_model.generate(__payload, max_new_tokens=64)
                         logger.info(f"RAW llm tokens {__llm_raw_token}")
                         __llm_output:str = self.llm_tokenizer.decode(__llm_raw_token[0])
                     except Exception as e:
-                        logger.error(f"{e} so pu the basic value")
+                        logger.error(f"{e} | so put the basic value")
                         __llm_output = "Hello"
                     logger.info(f"[{self.model_id}] llm model output {__llm_output}")
                     await self.llm_output_queue.put({"text":__llm_output,"request_id":__request_id})
