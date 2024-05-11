@@ -14,7 +14,9 @@ import librosa
 
 
 
-sound,sr =librosa.load("./samples/test16.wav",sr=16000)
+# sound,sr =librosa.load("./samples/test16.wav",sr=16000)
+with open("./samples/test16.wav",'rb') as file:
+    sound = file.read()
 
 logger = configure_logger(__name__)
 
@@ -49,7 +51,7 @@ async def recordAudio():
                 await asyncio.sleep(0.5)
                 data = stream.read(chunk, exception_on_overflow=False)
                 # audio_array = np.array(bytes_to_float_array(data),dtype=np.float32)
-                connection.send_bytes(sound.tobytes())
+                connection.send_bytes(sound)
                 
         except Exception as e:
             print(e)

@@ -87,19 +87,20 @@ class Model:
     async def putAudio(self, audio:bytes, prompt:str, request_id:str):
         logger.info(f"[{self.model_id}] got an audio with request id {request_id} and prompt {prompt}")
         
-        audio = io.BytesIO(audio)
-        audio, sr = torchaudio.load(audio)
-        if sr != 16000:
-            audio = torchaudio.transforms.Resample(sr, 16000)(audio)
-        __audio_values = self.audio_processor(
-            audio=audio, 
-            return_tensors="pt", 
-            sampling_rate=self.samplerate).input_values
-    
-        __msgs = [
-            {"role": "user", "content": prompt},
-        ]
+        
         try:
+            audio = io.BytesIO(audio)
+            audio, sr = torchaudio.load(audio)
+            if sr != 16000:
+                audio = torchaudio.transforms.Resample(sr, 16000)(audio)
+            __audio_values = self.audio_processor(
+                audio=audio, 
+                return_tensors="pt", 
+                sampling_rate=self.samplerate).input_values
+        
+            __msgs = [
+                {"role": "user", "content": prompt},
+            ]
             __labels = self.llm_tokenizer.apply_chat_template(
                 __msgs, return_tensors="pt", add_generation_prompt=True
             )
