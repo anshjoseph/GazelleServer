@@ -77,7 +77,8 @@ class Model:
                 self.llm_model_id,
                 device_map=self.device,
                 torch_dtype=torch.bfloat16
-            )
+            ).to(self.device, dtype=torch.bfloat16)
+            self.llm_model.to(dtype=torch.bfloat16)
             logger.info(f"\t[{self.model_id}] loaded LLM model")
     
     def bytes_to_float_array(self,audio_bytes):
