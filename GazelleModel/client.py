@@ -22,11 +22,10 @@ class Client:
                 await asyncio.sleep(0.5)
                 
                 llm_output = await self.llm_handler.getLLMOutput(self.client_id)
-                if llm_output:
-                    try:
-                        await self.websocket.send_text(llm_output)
-                    except WebSocketDisconnect:
-                        break
+                try:
+                    await self.websocket.send_text(llm_output)
+                except TypeError:
+                    pass
             except Exception as e:
                 break
     async def recever(self):
