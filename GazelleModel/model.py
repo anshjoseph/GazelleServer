@@ -108,7 +108,7 @@ class Model:
         except Exception as e:
             logger.error(f"error in labelmaker {e}")
         __payload = {
-                "audio_values": __audio_values.squeeze(0).to(self.device).to(self.audio_dtype), 
+                "audio_values": __audio_values.squeeze(0).to(self.device).to(self.llm_model.dtype), 
                 "input_ids": __labels.to(self.device), 
                 "request_id": request_id
             } 
