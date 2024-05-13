@@ -32,7 +32,7 @@ def bytes_to_float_array(audio_bytes):
 connection = websocket.create_connection(ws_url)
 
 
-chunk = 16000*3
+chunk = 16000
 format = pyaudio.paInt16
 channels = 1
 rate = 16000
@@ -58,10 +58,14 @@ async def recordAudio():
                     __data = np.frombuffer(data, dtype='int16')
                     print(f"len of it {len(__data)}")
                     audio_bytes = write_bytesIO(16000,__data)
+
                     with open("temp.wav",'wb') as file:
-                        file.write(audio_bytes.read())
+                        ___data = audio_bytes.read()
+                        file.write(___data)
                     with open("/media/ansh/22A048A8A04883EF/WORK/BOLNA/GazelleServer/temp.wav",'rb') as file:
                         __data = file.read()
+
+                    print(len(___data),len(__data))
                     file = io.BytesIO(__data)
                     # file.write(audio_bytes.read())
                     # audio, sr = torchaudio.load(file)

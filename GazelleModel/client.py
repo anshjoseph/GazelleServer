@@ -34,7 +34,7 @@ class Client:
             try:
                 await asyncio.sleep(0.5)
                 audio_chunk:bytes = await self.websocket.receive_bytes()
-                await self.llm_handler.putLLMRequest(audio_chunk,"Transcribe the following \n<|audio|>",self.client_id)
+                await self.llm_handler.putLLMRequest(audio_chunk,"<|audio|>",self.client_id)
             except Exception as e:
                 break
 
