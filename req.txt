@@ -97,7 +97,7 @@ nvidia-nccl-cu12==2.18.1
 nvidia-nvjitlink-cu12==12.4.127
 nvidia-nvtx-cu12==12.1.105
 onnx==1.16.0
-onnxruntime==1.17.3
+onnxruntime==1.16.3
 openai==1.10.0
 openai-whisper==20231117
 openfile==0.0.7
