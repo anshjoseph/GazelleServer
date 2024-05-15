@@ -13,3 +13,6 @@ simpleClientStart:
 smlClientStart:
 	clear
 	python3 client01.py
+startServer:
+	clear
+	python3 main.py

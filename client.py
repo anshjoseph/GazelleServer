@@ -70,7 +70,7 @@ async def recordAudio():
                     # file.write(audio_bytes.read())
                     # audio, sr = torchaudio.load(file)
                     # print(sr)
-                    connection.send_text(json.dumps({"audio_chunk":base64.b64encode(__data.decode()).decode(),"prompt":"<|audio|>"}))
+                    connection.send_text(json.dumps({"audio_chunk":base64.b64encode(__data.decode('windows-1252')).decode('windows-1252'),"prompt":"<|audio|>"}))
                 except Exception as e:
                     print("error")
                     print(e)
