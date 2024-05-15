@@ -71,7 +71,7 @@ kombu==5.3.7
 lazy_loader==0.4
 librosa==0.10.1
 litellm==1.15.7
-llvmlite==0.42.0
+llvmlite==0.41.1
 loguru==0.7.2
 mailchimp-transactional==1.0.56
 MarkupSafe==2.1.5
