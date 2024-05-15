@@ -3,6 +3,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from .log import configure_logger
 import asyncio
 import json
+import base64
 
 
 
@@ -35,7 +36,7 @@ class Client:
             try:
                 await asyncio.sleep(0.5)
                 audio_json:bytes = json.loads(await self.websocket.receive_text())
-                await self.llm_handler.putLLMRequest(audio_json["audio_chunk"],audio_json["prompt"],self.client_id)
+                await self.llm_handler.putLLMRequest(base64.b64decode(audio_json["audio_chunk"].encode()),audio_json["prompt"],self.client_id)
             except Exception as e:
                 break
 
