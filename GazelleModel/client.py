@@ -38,6 +38,7 @@ class Client:
                 audio_json:dict = pickle.loads(await self.websocket.receive_bytes())
                 await self.llm_handler.putLLMRequest(audio_json["audio_chunk"],audio_json["prompt"],self.client_id)
             except Exception as e:
+                logger.error(f"from recever {e}")
                 break
 
     async def start(self):
