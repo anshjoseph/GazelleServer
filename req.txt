@@ -19,8 +19,7 @@ audioread==3.0.1
 av==11.0.0
 backoff==2.2.1
 billiard==4.2.0
-bitsandbytes==0.43.1
--e git+https://github.com/bolna-ai/bolna.git@f98d5b7f25fa7a166181c6947c85bb00910a2d6f#egg=bolna
+bitsandbytes==0.42.0
 botocore==1.33.13
 cached-property==1.5.2
 celery==5.3.6
