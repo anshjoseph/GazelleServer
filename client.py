@@ -12,6 +12,7 @@ import json
 import torch
 import torchaudio
 import librosa
+import pickle
 import io
 from scipy.io.wavfile import write
 
@@ -70,7 +71,7 @@ async def recordAudio():
                     # file.write(audio_bytes.read())
                     # audio, sr = torchaudio.load(file)
                     # print(sr)
-                    connection.send_text(json.dumps({"audio_chunk":base64.b64encode(__data.decode('windows-1252')).decode('windows-1252'),"prompt":"<|audio|>"}))
+                    connection.send_text(pickle.dumps({"audio_chunk":__data,"prompt":"<|audio|>"}))
                 except Exception as e:
                     print("error")
                     print(e)
