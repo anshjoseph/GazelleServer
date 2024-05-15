@@ -1,13 +1,14 @@
 from asyncio import Queue
 from .base import SLM
-import websockets.connection as connection
+import websocket
 import asyncio
+import pickle
 
 class Gazelle(SLM):
-    def __init__(self, input_queue: Queue, output_queue: Queue, agent_name:str = "gazelle_slm", agent_access_ws:str = "ws://44.221.66.152:4000/connection") -> None:
+    def __init__(self, input_queue: Queue, output_queue: Queue, agent_name:str = "gazelle_slm", agent_access_ws:str = "ws://44.221.66.152:4000/connection",prompt:str="assist me") -> None:
         super().__init__(input_queue, output_queue)
         # for debug stuff
-        self.__debug = True
+        self.__debug = False
         # class parameter
         self.agent_name:str = agent_name
         self.agent_access_ws:str = agent_access_ws
@@ -16,6 +17,8 @@ class Gazelle(SLM):
         # task for event loop
         self.sender_task  = None
         self.recever_task = None
+        # model prompt
+        self.prompt:str = prompt
     
     async def __sender(self):
         print("SENDER task on")
@@ -23,11 +26,11 @@ class Gazelle(SLM):
             await asyncio.sleep(0.5)
             if is_frame_ready:
                 try:
-                    audio_bytes_to_send:bytes = self.pred_frame(audio_frame)
+                    audio_bytes_to_send:bytes = await self.pred_frame(audio_frame)
                 except Exception as e:
                     print(f"__sender {e}")
-                # if not self.__debug:
-                #     self.connect.send_bytes(audio_bytes_to_send)
+                if not self.__debug:
+                    self.ws_connection.send_bytes(pickle.dumps({"audio_chunk":audio_bytes_to_send ,"prompt":f"{self.prompt}<|audio|>"}))
             else:
                 continue
     async def __recever(self):
@@ -36,7 +39,7 @@ class Gazelle(SLM):
             try:
                 await asyncio.sleep(0.5)
                 if not self.__debug:
-                    data = connection.recv()
+                    data = self.ws_connection.recv()
                 else:
                     data = "some thing"
                 await self.output_queue.put(data)
@@ -47,7 +50,7 @@ class Gazelle(SLM):
     async def connect(self):
         await super().connect()
         if not self.__debug:
-            self.ws_connection = connection(self.agent_access_ws)
+            self.ws_connection = websocket.create_connection(self.agent_access_ws)
         else:
             self.ws_connection = None
     

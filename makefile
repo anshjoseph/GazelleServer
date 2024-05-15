@@ -10,7 +10,7 @@ pullGPUv:
 simpleClientStart:
 	clear
 	python3 client.py
-smlClientStart:
+slmClientStart:
 	clear
 	python3 client01.py
 startServer:

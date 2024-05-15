@@ -4,6 +4,8 @@ import io
 from asyncio.queues import Queue
 import aiofiles
 import numpy as np
+from scipy.io.wavfile import write
+from uuid import uuid4
 
 
 class SLM:
@@ -37,10 +39,12 @@ class SLM:
         """
         print("START making frame")
         frame:list = []
-        duration:float = 0.00
+        duration:float = 0
         while True:
             try:
+                print("start wait for audio chunk")
                 audio_chunk:bytes = await self.input_queue.get()
+                print("get audio chunk")
                 audio_array = np.frombuffer(audio_chunk,dtype=np.int16)
                 __audio_duration = len(audio_array) / self.sample_rate
                 prob,self.vad_state = self.VAD(SLM.int_to_float_array(audio_array),self.vad_state,self.sample_rate)
@@ -55,15 +59,18 @@ class SLM:
                     self.slience_count = 0
                     # some one is speecking
                     self.interruption_signal = True
+                if self.slience_count >= self.slience_count_threshold_split_frame:
+                    if len(frame) != 0:
+                        __frame = np.asarray(frame,dtype=np.int16)
+                        write(f"./temp/{uuid4()}.wav",self.sample_rate,__frame)
+                        yield (__frame,duration,True)
+                        # clean up stuff
+                        frame.clear()
+                        duration = 0.00
+                        self.slience_count = 0
             except Exception as e:
                 print(e)
-            if self.slience_count >= self.slience_count_threshold_split_frame:
-                if len(frame) != 0:
-                    yield (np.asarray(frame,dtype=np.int16),duration,True)
-                    # clean up stuff
-                    frame.clear()
-                    duration = 0.00
-                    self.slience_count = 0
+            
             # yield (np.zeros(1),duration,False)
     async def pred_frame(self,frame:np.array)->bytes:
         audio_bytes:io.BytesIO = write_bytesIO(self.sample_rate,frame)

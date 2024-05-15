@@ -32,11 +32,12 @@ async def recording():
         try:
             data:bytes = stream.read(chunk, exception_on_overflow=False)
             await input_queue.put(data)
+            print("print date in input queue")
         except Exception as e:
             print(e)
 
 async def main():
     await client.connect()
-    await client.start()
+    await asyncio.gather(client.start(),recording())
 
 asyncio.run(main())

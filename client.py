@@ -71,7 +71,7 @@ async def recordAudio():
                     # file.write(audio_bytes.read())
                     # audio, sr = torchaudio.load(file)
                     # print(sr)
-                    connection.send_text(pickle.dumps({"audio_chunk":__data,"prompt":"<|audio|>"}))
+                    connection.send_bytes(pickle.dumps({"audio_chunk":__data,"prompt":"assist me<|audio|>"}))
                 except Exception as e:
                     print("error")
                     print(e)
