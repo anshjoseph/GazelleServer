@@ -76,12 +76,12 @@ class SLM:
         audio_bytes:io.BytesIO = write_bytesIO(self.sample_rate,frame)
         # we have optimized it
         ret:bytes = b""
-        async with aiofiles.open("temp.wav",'wb') as file:
-            print("FILE SAVE IN TEMP")
-            await file.write(audio_bytes.read())
-        async with aiofiles.open("temp.wav",'rb') as file:
-            ret = await file.read()
-        return ret
+        # async with aiofiles.open("temp.wav",'wb') as file:
+        #     print("FILE SAVE IN TEMP")
+        #     await file.write(audio_bytes.read())
+        # async with aiofiles.open("temp.wav",'rb') as file:
+        #     ret = await file.read()
+        return audio_bytes.read()
 
     # abstract functions
     async def start(self):

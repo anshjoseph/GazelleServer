@@ -26,7 +26,7 @@ logger = configure_logger(__name__)
 
 py_audio_stream = pyaudio.PyAudio()
 
-ws_url = "ws://44.221.66.152:4000/connection"
+ws_url = "ws://44.222.100.37:4000/connection"
 def bytes_to_float_array(audio_bytes):
     raw_data = np.frombuffer(buffer=audio_bytes, dtype=np.int16)
     return raw_data.astype(np.float32) / 32768.0
